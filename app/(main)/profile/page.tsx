@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusIcon, GridIcon, BookmarkIcon, TagIcon } from 'lucide-react';
+import { GridIcon, HeartIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -154,24 +154,53 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl py-10 px-4">
-        <div className="flex flex-col md:flex-row md:items-start gap-8">
-          <div className="flex justify-center">
+      <div className="container max-w-4xl mx-auto py-6 px-4">
+        {/* Profile header */}
+        <div className="flex flex-col md:flex-row items-start gap-8 mb-10">
+          {/* Profile picture skeleton */}
+          <div className="flex justify-center w-full md:w-auto">
             <Skeleton className="h-24 w-24 md:h-36 md:w-36 rounded-full" />
           </div>
-          <div className="flex-1 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
+
+          {/* Profile info skeleton */}
+          <div className="flex-1">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
               <Skeleton className="h-7 w-40" />
-              <Skeleton className="h-9 w-28" />
-              <Skeleton className="h-9 w-28" />
+              <Skeleton className="h-9 w-24 rounded-md" />
+              <Skeleton className="h-10 w-10 rounded-full" />
             </div>
-            <div className="flex gap-6">
-              <Skeleton className="h-5 w-20" />
+
+            {/* Stats row skeleton */}
+            <div className="flex gap-6 mb-4">
+              <Skeleton className="h-5 w-16" />
               <Skeleton className="h-5 w-20" />
               <Skeleton className="h-5 w-20" />
             </div>
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-5 w-48" />
+
+            {/* Bio skeleton */}
+            <div className="space-y-1">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs skeleton */}
+        <div className="w-full border-t border-gray-200 pt-4">
+          <div className="grid grid-cols-3 w-full max-w-md mx-auto gap-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          
+          {/* Content area skeleton */}
+          <div className="mt-6">
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Skeleton className="h-8 w-40 mb-2" />
+              <Skeleton className="h-4 w-64 mb-6" />
+              <Skeleton className="h-10 w-36 rounded-md" />
+            </div>
           </div>
         </div>
       </div>
@@ -192,8 +221,8 @@ export default function ProfilePage() {
 
         {/* Profile info */}
         <div className="flex-1">
-          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-            <h1 className="text-xl font-semibold">{profile?.full_name || 'itsme_balla'}</h1>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <h1 className="text-xl font-semibold">{profile?.full_name || 'college user'}</h1>
             
             {/* Edit Profile button trigger for dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -281,23 +310,6 @@ export default function ProfilePage() {
                 </form>
               </DialogContent>
             </Dialog>
-
-            <Button variant="outline" size="sm" className="h-9">
-              View archive
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="rounded-full h-10 w-10"
-              aria-label="Settings"
-            >
-              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                <circle cx="12" cy="12" r="1" />
-                <circle cx="19" cy="12" r="1" />
-                <circle cx="5" cy="12" r="1" />
-              </svg>
-            </Button>
           </div>
 
           {/* Stats row */}
@@ -315,38 +327,23 @@ export default function ProfilePage() {
 
           {/* Bio */}
           <div className="space-y-1">
-            {profile?.full_name && <p className="font-semibold">{profile.full_name}</p>}
-            {profile?.bio ? 
-              <p>{profile.bio}</p> : 
-              <p>it&apos;s_me @balla</p>
-            }
-            {profile?.college && <p>{profile.college}</p>}
+            <h2 className="text-lg font-semibold">{profile?.college}</h2>
+            {profile?.bio && <p>{profile?.bio}</p>}
           </div>
         </div>
       </div>
 
-      {/* New post button (replica of the circular + button) */}
-      <div className="flex flex-col items-center mb-10">
-        <button title="New" type="button" className="group relative h-20 w-20 rounded-full border-2 border-gray-200 flex items-center justify-center mb-2">
-          <PlusIcon className="h-8 w-8 text-gray-400" />
-        </button>
-        <span className="text-sm font-medium">New</span>
-      </div>
 
       {/* Tabs for Posts, Saved, Tagged */}
       <Tabs defaultValue="posts" className="w-full border-t border-gray-200">
-        <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto">
+        <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto">
           <TabsTrigger value="posts" className="flex items-center gap-2">
             <GridIcon className="h-4 w-4" />
             <span className="hidden sm:inline">POSTS</span>
           </TabsTrigger>
           <TabsTrigger value="saved" className="flex items-center gap-2">
-            <BookmarkIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">SAVED</span>
-          </TabsTrigger>
-          <TabsTrigger value="tagged" className="flex items-center gap-2">
-            <TagIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">TAGGED</span>
+            <HeartIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">LIKED</span>
           </TabsTrigger>
         </TabsList>
         
@@ -360,7 +357,7 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <h2 className="text-xl font-semibold mb-2">No Posts Yet</h2>
               <p className="text-gray-500 mb-6">When you share photos, they&apos;ll appear here.</p>
-              <Button>Share your first photo</Button>
+              <Button disabled variant="outline" className="bg-card border-2 border-muted rounded-md shadow-sm">Share your first photo by clicking create post</Button>
             </div>
           )}
         </TabsContent>
@@ -371,14 +368,7 @@ export default function ProfilePage() {
             <p className="text-gray-500">When you save something, it&apos;ll appear here.</p>
           </div>
         </TabsContent>
-        
-        <TabsContent value="tagged">
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <h2 className="text-xl font-semibold mb-2">No Photos</h2>
-            <p className="text-gray-500">When people tag you in photos, they&apos;ll appear here.</p>
-          </div>
-        </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

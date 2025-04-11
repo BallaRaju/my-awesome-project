@@ -1,5 +1,6 @@
-// lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 
 // Define your database types
 export type Profile = {
@@ -68,15 +69,7 @@ export type Database = {
   };
 };
 
-// Initialize the Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase URL and Anon Key must be defined in environment variables');
-}
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // Utility functions for profile management
 export async function getUserProfile(userId: string): Promise<Profile | null> {

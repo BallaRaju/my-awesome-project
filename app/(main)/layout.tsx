@@ -8,24 +8,20 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
 interface DashboardLayoutProps {
     children: ReactNode;
-  }
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  
-    return (
-            <SidebarProvider>
-              <AppSidebar variant="inset" />
-              <SidebarInset>
-                <SiteHeader />
-                <div className="flex flex-1 flex-col">
-                  <div className="@container/main flex flex-1 flex-col gap-2">
-                    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                      { children  }
-                    </div>
-                  </div>
-                </div>
-              </SidebarInset>
-            </SidebarProvider>
-          );
-  
-  
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="flex flex-col h-screen">
+        <SiteHeader className="sticky top-0 z-10 bg-background" />
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto max-w-3xl px-4">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }

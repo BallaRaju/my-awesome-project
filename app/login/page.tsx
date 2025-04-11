@@ -1,33 +1,25 @@
 'use client'
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { FcGoogle } from "react-icons/fc"
 
 export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const { signInWithGoogle } = useAuth()
 
   const handleGoogleLogin = async () => {
     setError(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${location.origin}/auth/callback`, // or your callback URL
-      },
-    })
+    await signInWithGoogle()
 
     if (error) {
-      setError(error.message)
+      setError(error)
       setLoading(false)
     }
   }

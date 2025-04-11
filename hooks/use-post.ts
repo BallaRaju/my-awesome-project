@@ -69,8 +69,12 @@ export type Database = {
 };
 
 // Initialize the Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase URL and Anon Key must be defined in environment variables');
+}
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
@@ -107,7 +111,7 @@ export async function getUserProfile(userId: string): Promise<Profile | null> {
 export async function followUser(currentUserId: string, targetUserId: string): Promise<boolean> {
   try {
     // Use the RPC function to follow a user
-    const { data, error } = await supabase.rpc('follow_user', {
+    const {  error } = await supabase.rpc('follow_user', {
       follower_id: currentUserId,
       following_id: targetUserId
     });
@@ -126,7 +130,7 @@ export async function followUser(currentUserId: string, targetUserId: string): P
 export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<boolean> {
   try {
     // Use the RPC function to unfollow a user
-    const { data, error } = await supabase.rpc('unfollow_user', {
+    const {  error } = await supabase.rpc('unfollow_user', {
       follower_id: currentUserId,
       following_id: targetUserId
     });

@@ -1,8 +1,12 @@
 // hooks/useAuth.ts
 import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase, Profile, getUserProfile } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+import type { Session, User } from '@supabase/supabase-js';
+import { getUserProfile, type Profile } from './use-post';
+
+// Initialize the Supabase client
+const supabase = createClient();
 
 type AuthState = {
   session: Session | null;
@@ -13,7 +17,6 @@ type AuthState = {
 };
 
 export function useAuth() {
-  const { toast } = useToast();
   const [authState, setAuthState] = useState<AuthState>({
     session: null,
     user: null,
@@ -50,7 +53,7 @@ export function useAuth() {
         } else {
           setAuthState(prev => ({ ...prev, isLoading: false }));
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Auth initialization error:', error);
         setAuthState(prev => ({
           ...prev,
@@ -107,7 +110,7 @@ export function useAuth() {
       }));
       
       return profile;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching user profile:', error);
       setAuthState(prev => ({ 
         ...prev, 
@@ -128,18 +131,14 @@ export function useAuth() {
       }
       
       // State will be updated by the onAuthStateChange listener
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error signing out:', error);
-      toast({
-        title: 'Error signing out',
-        description: error.message || 'Something went wrong',
-        variant: 'destructive',
-      });
+      toast.error(error instanceof Error ? error.message : 'Something went wrong');
       
       setAuthState(prev => ({ 
         ...prev, 
         isLoading: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Something went wrong'
       }));
     }
   }
@@ -148,10 +147,10 @@ export function useAuth() {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true }));
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: ${window.location.origin}/auth/callback,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       
@@ -160,29 +159,21 @@ export function useAuth() {
       }
 
       // State will be updated by redirect and onAuthStateChange listener
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error signing in with Google:', error);
-      toast({
-        title: 'Error signing in',
-        description: error.message || 'Something went wrong',
-        variant: 'destructive',
-      });
+      toast.error(error instanceof Error ? error.message : 'Something went wrong');
       
       setAuthState(prev => ({ 
         ...prev, 
         isLoading: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Something went wrong'
       }));
     }
   }
 
   async function updateUserProfile(profileData: Partial<Profile>) {
     if (!authState.user) {
-      toast({
-        title: 'Authentication Error',
-        description: 'You must be logged in to update your profile',
-        variant: 'destructive',
-      });
+      toast.error('You must be logged in to update your profile');
       return null;
     }
 
@@ -202,13 +193,9 @@ export function useAuth() {
       await refreshProfile();
       
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating profile:', error);
-      toast({
-        title: 'Error updating profile',
-        description: error.message || 'Something went wrong',
-        variant: 'destructive',
-      });
+      toast.error(error instanceof Error ? error.message : 'Something went wrong');
       return null;
     }
   }

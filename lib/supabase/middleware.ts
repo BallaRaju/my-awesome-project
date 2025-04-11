@@ -55,7 +55,7 @@ export async function updateSession(request: NextRequest) {
 
   // Define public and protected routes
   const publicRoutes = ['/login'];
-  const protectedRoutes = ['/', '/settings'];
+  const protectedRoutes = ['/', '/settings', '/profile'];
   
   // Check if current path is protected or public
   const isProtectedRoute = protectedRoutes.some(route => pathname === route || pathname.startsWith(`${route}/`));

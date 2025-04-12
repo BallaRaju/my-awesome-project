@@ -9,8 +9,7 @@ export type Profile = {
   bio: string | null;
   college: string | null;
   avatar_url: string | null;
-  following: string[];
-  followers: string[];
+  friends: string[];
   posts: string[];
   notifications: Notification[];
   created_at: string;
@@ -84,13 +83,20 @@ export async function getUserProfile(userId: string): Promise<Profile | null> {
       console.error('Error fetching profile:', error);
       return null;
     }
-    
+
+    const { data: posts, error: postsError } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('user_id', userId);
+
+    if (postsError) {
+      throw postsError;
+    }
     // Convert JSONB arrays to proper TypeScript arrays
     const profile = {
       ...data,
-      following: Array.isArray(data.following) ? data.following : [],
-      followers: Array.isArray(data.followers) ? data.followers : [],
-      posts: Array.isArray(data.posts) ? data.posts : [],
+      friends: Array.isArray(data.friends) ? data.friends : [],
+      posts: Array.isArray(posts) ? posts : [],
       notifications: Array.isArray(data.notifications) ? data.notifications : [],
     };
     
@@ -187,7 +193,7 @@ export async function getFeedPosts(userId: string): Promise<Post[]> {
     // Get the user's profile to find who they're following
     const profile = await getUserProfile(userId);
     
-    if (!profile || !profile.following.length) {
+    if (!profile || !profile.friends.length) {
       return [];
     }
     
@@ -195,7 +201,7 @@ export async function getFeedPosts(userId: string): Promise<Post[]> {
     const { data, error } = await supabase
       .from('posts')
       .select('*')
-      .in('user_id', profile.following)
+      .in('user_id', profile.friends)
       .order('created_at', { ascending: false });
       
     if (error) {

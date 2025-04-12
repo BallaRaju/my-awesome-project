@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GridIcon, HeartIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 export default function ProfilePage() {
   const { user, profile, isLoading, refreshProfile } = useAuth();
@@ -154,7 +155,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl mx-auto py-6 px-4">
+     <div className="container max-w-4xl mx-auto py-6 px-4">
         {/* Profile header */}
         <div className="flex flex-col md:flex-row items-start gap-8 mb-10">
           {/* Profile picture skeleton */}
@@ -318,10 +319,7 @@ export default function ProfilePage() {
               <span className="font-semibold">{profile?.posts?.length || 0}</span> posts
             </div>
             <div className="font-medium">
-              <span className="font-semibold">{profile?.followers?.length || 52}</span> followers
-            </div>
-            <div className="font-medium">
-              <span className="font-semibold">{profile?.following?.length || 103}</span> following
+              <span className="font-semibold">{profile?.friends?.length || 52}</span> friends
             </div>
           </div>
 
@@ -352,6 +350,18 @@ export default function ProfilePage() {
           {profile?.posts?.length ? (
             <div className="grid grid-cols-3 gap-1">
               {/* Post thumbnails would go here */}
+              {JSON.stringify(profile?.posts)}
+              {/* {profile?.posts?.map(post => (
+                <div key={post.id} className="col-span-1">
+                  <Image
+                    src={post.image_url}
+                    alt="Post"
+                    width={300}
+                    height={300}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))} */}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10 text-center">

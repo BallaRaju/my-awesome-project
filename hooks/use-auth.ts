@@ -222,7 +222,7 @@ export function useAuth() {
       // Search for users where full_name contains the query (case insensitive)
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, full_name, avatar_url')
+        .select('id, full_name, avatar_url')
         .ilike('full_name', `%${query}%`)
         .limit(10);
 

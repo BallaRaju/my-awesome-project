@@ -209,7 +209,7 @@ export async function getAllPosts(userFriends: string[] = []): Promise<Post[]> {
         created_at: post.created_at,
         updated_at: post.updated_at,
         full_name: user?.full_name || null,
-        avatar_url: user?.avatar_url || null
+        avatar_url: user?.avatar_url
       };
     });
 

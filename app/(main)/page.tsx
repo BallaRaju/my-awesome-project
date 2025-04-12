@@ -16,16 +16,18 @@ function PostCard({ post }: { post: Post }) {
   const [saved, setSaved] = useState(false);
   const toggleLike = () => setLiked(!liked);
   const toggleSave = () => setSaved(!saved);
+
+  if(!post) return null;
   
   return (
     <Card className="mb-4 max-w-xl mx-auto border shadow-sm">
       <CardHeader className="p-1 pb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={post.avatar_url || ""} alt={post.full_name || ""} />
+            {post.full_name&& post.avatar_url&& <Avatar className="h-7 w-7">
+              <AvatarImage src={post.avatar_url} alt={post.full_name} loading="lazy"/>
               <AvatarFallback>{post.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            </Avatar>}
             <div>
               <p className="text-sm font-medium">{post.full_name}</p>
             </div>

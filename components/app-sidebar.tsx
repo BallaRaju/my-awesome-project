@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "./ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Input } from "./ui/input"
@@ -79,6 +79,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchResults, setSearchResults] = useState<Partial<Profile>[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const { searchUsers } = useAuth();
+  
+  // Move useRef hooks to the top level of the component
+  const debounceTimeout = useRef<number | null>(null);
+  const searchQueryRef = useRef<string>(searchQuery);
 
   const togglePanel = (panelId: string) => {
     setActivePanel(activePanel === panelId ? null : panelId);
@@ -97,32 +101,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Perform search when query changes
   useEffect(() => {
-    // Debounce search to avoid too many requests
-    const debounceTimeout = setTimeout(async () => {
-      if (searchQuery.trim().length === 0) {
-        setSearchResults([]);
-        setIsSearching(false);
-        return;
+    // Update the ref when searchQuery changes
+    if (searchQueryRef.current !== searchQuery) {
+      searchQueryRef.current = searchQuery;
+      
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
       }
+      
+      debounceTimeout.current = window.setTimeout(async () => {
+        if (searchQueryRef.current.trim().length === 0) {
+          setSearchResults([]);
+          setIsSearching(false);
+          return;
+        }
 
-      setIsSearching(true);
-      try {
-        console.log("Calling searchUsers with query:", searchQuery);
-        const results = await searchUsers(searchQuery);
-        console.log("Got search results:", results);
-        setSearchResults(results);
-      } catch (error) {
-        console.error("Search error:", error);
-        // Ensure we still clear the searching state on error
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-    
+        setIsSearching(true);
+        try {
+          console.log("Calling searchUsers with query:", searchQueryRef.current);
+          const results = await searchUsers(searchQueryRef.current);
+          console.log("Got search results:", results);
+          setSearchResults(results);
+        } catch (error) {
+          console.error("Search error:", error);
+          // Ensure we still clear the searching state on error
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 600);
+    }
+
     // Cleanup function
     return () => {
-      clearTimeout(debounceTimeout);
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
     };
   }, [searchQuery, searchUsers]);
   
@@ -191,10 +205,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         key={user.id}
                         className="flex items-center gap-2 p-2 hover:bg-muted rounded-md transition-colors"
                       >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.avatar_url || undefined} alt={user.full_name || ""} />
+                        {user.avatar_url && user.full_name && <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar_url} alt={user.full_name} />
                           <AvatarFallback>{user.full_name?.substring(0, 2).toUpperCase() || "??"}</AvatarFallback>
-                        </Avatar>
+                        </Avatar>}
                         <div>
                           <p className="text-sm font-medium">{user.full_name}</p>
                         </div>

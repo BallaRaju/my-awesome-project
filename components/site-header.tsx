@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 
 function formatFullPath(path: string) {
   if (path === "/") return "Home"
+  if(path.startsWith('/profile')) return "Profile"
   return path
     .split("/")
     .filter(Boolean)

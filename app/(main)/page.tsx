@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { HeartIcon, MessageCircleIcon, BookmarkIcon, SendIcon, MoreHorizontalIcon } from "lucide-react"
 import Image from "next/image"
 import { getAllPosts, type Post } from "@/hooks/use-post"
+import { useRouter } from "next/navigation"
 
 
 function PostCard({ post }: { post: Post }) {
@@ -16,14 +17,18 @@ function PostCard({ post }: { post: Post }) {
   const [saved, setSaved] = useState(false);
   const toggleLike = () => setLiked(!liked);
   const toggleSave = () => setSaved(!saved);
+  const router = useRouter();
 
   if(!post) return null;
+  const handleProfile = () => {
+    router.push(`/profile/${post.user_id}`);
+  }
   
   return (
     <Card className="mb-4 max-w-xl mx-auto border shadow-sm">
       <CardHeader className="p-1 pb-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Button variant="ghost" className="flex items-center gap-2 cursor-pointer" onClick={handleProfile} onKeyDown={handleProfile} >
             {post.full_name&& post.avatar_url&& <Avatar className="h-7 w-7">
               <AvatarImage src={post.avatar_url} alt={post.full_name} loading="lazy"/>
               <AvatarFallback>{post.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -31,7 +36,7 @@ function PostCard({ post }: { post: Post }) {
             <div>
               <p className="text-sm font-medium">{post.full_name}</p>
             </div>
-          </div>
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7">
             <MoreHorizontalIcon className="h-4 w-4" />
           </Button>
@@ -152,6 +157,8 @@ export default function Page() {
     };
     getPosts();
   }, [profile]);
+
+  console.log("posts", posts)
 
   if(isLoading || isLoadingPosts){
     return (

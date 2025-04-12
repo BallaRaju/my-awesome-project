@@ -223,6 +223,7 @@ export function useAuth() {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url')
+        .neq('id', authState.user?.id)
         .ilike('full_name', `%${query}%`)
         .limit(10);
 

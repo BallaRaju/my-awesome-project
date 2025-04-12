@@ -176,6 +176,7 @@ export async function getAllPosts(userFriends: string[] = []): Promise<Post[]> {
     // if (userFriends.length === 0) {
     //   return [];
     // }
+
     
     const { data, error } = await supabase
       .from('posts')
@@ -198,21 +199,22 @@ export async function getAllPosts(userFriends: string[] = []): Promise<Post[]> {
         .select('full_name, avatar_url')
         .eq('id', post.user_id)
         .single();
-      
-      // Return a complete Post object
-      return {
-        id: post.id,
-        user_id: post.user_id,
-        image_url: post.image_url,
-        description: post.description || '', // Handle null descriptions
-        likes: post.likes || [],
-        created_at: post.created_at,
-        updated_at: post.updated_at,
-        full_name: user?.full_name || null,
-        avatar_url: user?.avatar_url
-      };
-    });
 
+        
+        // Return a complete Post object
+        return {
+          id: post.id,
+          user_id: post.user_id,
+          image_url: post.image_url,
+          description: post.description || '', // Handle null descriptions
+          likes: post.likes || [],
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          full_name: user?.full_name || null,
+          avatar_url: user?.avatar_url
+        };
+      });
+      
     const resolvedPosts = await Promise.all(posts);
 
     return resolvedPosts;

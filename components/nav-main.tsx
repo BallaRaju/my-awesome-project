@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import Image from "next/image"
 
 export function NavMain({
   togglePanel,
@@ -169,9 +170,10 @@ export function NavMain({
           <div className="space-y-4 py-4">
             {imagePreview ? (
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
-                <img 
+                <Image
                   src={imagePreview} 
                   alt="Preview" 
+                  fill
                   className="h-full w-full object-cover"
                 />
                 <Button 

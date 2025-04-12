@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -8,73 +8,12 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { HeartIcon, MessageCircleIcon, BookmarkIcon, SendIcon, MoreHorizontalIcon } from "lucide-react"
 import Image from "next/image"
+import { getAllPosts, type Post } from "@/hooks/use-post"
 
-// Sample post data
-export type Post = {
-  id: string;
-  user_id: string;
-  image_url: string;
-  description: string | null;
-  likes: string[];
-  created_at: string;
-  updated_at: string;
-  user?: {
-    username: string;
-    avatar_url: string;
-    full_name: string;
-  }
-};
-
-// Mock data for posts
-const mockPosts: Post[] = [
-  {
-    id: "1",
-    user_id: "user1",
-    image_url: "https://images.unsplash.com/photo-1682687218147-9806132dc697",
-    description: "Beautiful day at the campus! #collegelife #campus",
-    likes: ["user2", "user3", "user4"],
-    created_at: "2025-04-10T10:30:00Z",
-    updated_at: "2025-04-10T10:30:00Z",
-    user: {
-      username: "sarah_j",
-      avatar_url: "https://randomuser.me/api/portraits/women/44.jpg",
-      full_name: "Sarah Johnson"
-    }
-  },
-  {
-    id: "2",
-    user_id: "user2",
-    image_url: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f",
-    description: "Study session at the library. Finals week is coming! 📚 #studyhard #finals",
-    likes: ["user1", "user5"],
-    created_at: "2025-04-09T15:45:00Z",
-    updated_at: "2025-04-09T15:45:00Z",
-    user: {
-      username: "mike_p",
-      avatar_url: "https://randomuser.me/api/portraits/men/32.jpg",
-      full_name: "Mike Peterson"
-    }
-  },
-  {
-    id: "3",
-    user_id: "user3",
-    image_url: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
-    description: "College fest was amazing! Can't wait for next year! 🎉 #collegefest #memories",
-    likes: ["user1", "user2", "user4", "user5"],
-    created_at: "2025-04-08T20:15:00Z",
-    updated_at: "2025-04-08T20:15:00Z",
-    user: {
-      username: "alex_k",
-      avatar_url: "https://randomuser.me/api/portraits/men/22.jpg",
-      full_name: "Alex Kim"
-    }
-  }
-];
 
 function PostCard({ post }: { post: Post }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
-  
   const toggleLike = () => setLiked(!liked);
   const toggleSave = () => setSaved(!saved);
   
@@ -84,11 +23,11 @@ function PostCard({ post }: { post: Post }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Avatar className="h-7 w-7">
-              <AvatarImage src={post.user?.avatar_url} alt={post.user?.username} />
-              <AvatarFallback>{post.user?.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarImage src={post.avatar_url || ""} alt={post.full_name || ""} />
+              <AvatarFallback>{post.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-medium">{post.user?.username}</p>
+              <p className="text-sm font-medium">{post.full_name}</p>
             </div>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -97,11 +36,11 @@ function PostCard({ post }: { post: Post }) {
         </div>
       </CardHeader>
       <CardContent className="p-1 pt-0">
-        <div className="aspect-video w-full overflow-hidden bg-muted">
+        <div className="w-full overflow-hidden bg-muted">
           <Image 
             src={post.image_url} 
             alt="Post" 
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             width={500}
             height={500}
             sizes="(max-width: 768px) 100vw, 500px"
@@ -143,7 +82,7 @@ function PostCard({ post }: { post: Post }) {
         <div className="mt-1">
           <p className="text-xs font-medium">{post.likes.length} likes</p>
           <div className="mt-1">
-            <span className="text-xs font-medium">{post.user?.username}</span>{" "}
+            <span className="text-xs font-medium">{post.full_name}</span>{" "}
             <span className="text-xs">{post.description}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -160,7 +99,7 @@ function PostCard({ post }: { post: Post }) {
 
 function PostSkeleton() {
   return (
-    <Card className="mb-4 max-w-md mx-auto border shadow-sm">
+    <Card className="mb-4 max-w-2xl mx-auto border shadow-sm">
       <CardHeader className="p-3 pb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -194,24 +133,42 @@ function PostSkeleton() {
 }
 
 export default function Page() {
-  const { isLoading } = useAuth();
-  const [posts] = useState<Post[]>(mockPosts);
+  const { isLoading, profile } = useAuth();
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    
+    const getPosts = async () => {
+      if (profile?.friends) {
+        setIsLoadingPosts(true);
+        const myPosts = await getAllPosts(profile.friends);
+        console.log(myPosts);
+        setPosts(myPosts);
+      }
+        setIsLoadingPosts(false);
+    };
+    getPosts();
+  }, [profile]);
+
+  if(isLoading || isLoadingPosts){
+    return (
+      <>
+      <PostSkeleton />
+      <PostSkeleton />
+      <PostSkeleton />
+    </>
+    )
+  }
   
   return (
     <div className="py-4">
-      {isLoading ? (
-        // Loading skeletons
-        <>
-          <PostSkeleton />
-          <PostSkeleton />
-          <PostSkeleton />
-        </>
-      ) : posts.length > 0 ? (
+      {posts.length > 0 ? (
         // Posts feed
         posts.map(post => (
           <PostCard key={post.id} post={post} />
         ))
-      ) : (
+      ) :  (
         // Empty state
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <h2 className="text-xl font-semibold mb-2">No Posts Yet</h2>
@@ -220,7 +177,7 @@ export default function Page() {
           </p>
           <Button>Explore People</Button>
         </div>
-      )}
+      ) }
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import { createClient } from '@/lib/supabase/client';
 const supabase = createClient();
 
@@ -10,7 +9,7 @@ export type Profile = {
   college: string | null;
   avatar_url: string | null;
   friends: string[];
-  posts: string[];
+  posts: Post[];
   notifications: Notification[];
   created_at: string;
   updated_at: string;
@@ -24,6 +23,8 @@ export type Post = {
   likes: string[];
   created_at: string;
   updated_at: string;
+  full_name: string | null;
+  avatar_url: string | null;
 };
 
 export type Notification = {
@@ -169,19 +170,52 @@ export async function createPost(userId: string, imageUrl: string, description: 
   }
 }
 
-export async function getUserPosts(userId: string): Promise<Post[]> {
+export async function getAllPosts(userFriends: string[] = []): Promise<Post[]> {
   try {
+    // If no friends provided, return empty array
+    // if (userFriends.length === 0) {
+    //   return [];
+    // }
+    
     const { data, error } = await supabase
       .from('posts')
-      .select('*')
-      .eq('user_id', userId)
+      .select('*') // Select all fields from posts
+      // .in('user_id', userFriends)
       .order('created_at', { ascending: false });
       
     if (error) {
       throw error;
     }
-    
-    return data || [];
+
+    // If no posts found, return empty array
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const posts = data.map(async post => {
+      const { data: user } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', post.user_id)
+        .single();
+      
+      // Return a complete Post object
+      return {
+        id: post.id,
+        user_id: post.user_id,
+        image_url: post.image_url,
+        description: post.description || '', // Handle null descriptions
+        likes: post.likes || [],
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        full_name: user?.full_name || null,
+        avatar_url: user?.avatar_url || null
+      };
+    });
+
+    const resolvedPosts = await Promise.all(posts);
+
+    return resolvedPosts;
   } catch (error) {
     console.error('Error fetching user posts:', error);
     return [];

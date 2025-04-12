@@ -210,6 +210,36 @@ export function useAuth() {
     return null;
   }
 
+  // Search for users by full name
+  async function searchUsers(query: string) {
+    if (!query.trim()) {
+      return [];
+    }
+
+    try {
+      console.log("Searching for users with query:", query);
+      
+      // Search for users where full_name contains the query (case insensitive)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url')
+        .ilike('full_name', `%${query}%`)
+        .limit(10);
+
+      if (error) {
+        console.error("Supabase search error:", error);
+        throw error;
+      }
+
+      console.log("Search results:", data);
+      return data || [];
+    } catch (error) {
+      console.error('Error searching users:', error);
+      // Remove toast to avoid UI disruption
+      return [];
+    }
+  }
+
   return {
     session: authState.session,
     user: authState.user,
@@ -220,5 +250,6 @@ export function useAuth() {
     signOut,
     updateUserProfile,
     refreshProfile,
+    searchUsers,
   };
 }

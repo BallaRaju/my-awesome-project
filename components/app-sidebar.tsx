@@ -22,14 +22,12 @@ import {
 } from "@/components/ui/sidebar"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Input } from "./ui/input"
-
-
-
-
+import { useAuth } from "@/hooks/use-auth"
+import type { Profile } from "@/hooks/use-post"
 
 // Dummy data for search and notifications
 const searchSuggestions = [
@@ -77,10 +75,56 @@ const notifications = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<Partial<Profile>[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const { searchUsers } = useAuth();
 
   const togglePanel = (panelId: string) => {
     setActivePanel(activePanel === panelId ? null : panelId);
+    // Reset search when opening panel
+    if (panelId === "search" && activePanel !== "search") {
+      setSearchQuery("");
+      setSearchResults([]);
+    }
   };
+
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+  };
+
+  // Perform search when query changes
+  useEffect(() => {
+    // Debounce search to avoid too many requests
+    const debounceTimeout = setTimeout(async () => {
+      if (searchQuery.trim().length === 0) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        console.log("Calling searchUsers with query:", searchQuery);
+        const results = await searchUsers(searchQuery);
+        console.log("Got search results:", results);
+        setSearchResults(results);
+      } catch (error) {
+        console.error("Search error:", error);
+        // Ensure we still clear the searching state on error
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+    
+    // Cleanup function
+    return () => {
+      clearTimeout(debounceTimeout);
+    };
+  }, [searchQuery, searchUsers]);
   
   return (
     <div className="flex">
@@ -122,34 +166,71 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <div className="relative">
               <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search..." 
+                placeholder="Search users..." 
                 className="pl-8 w-full"
                 autoFocus
+                value={searchQuery}
+                onChange={handleSearchChange}
               />
             </div>
           </div>
           
           <div className="p-4">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Searches</h3>
-            <div className="space-y-2">
-              {searchSuggestions.map((item) => (
-                <Button 
-                  key={item.text} 
-                  variant="ghost" 
-                  className="w-full justify-start h-auto py-2 px-3"
-                >
-                  {item.type === "user" ? (
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage src={item.image} alt={item.text} />
-                      <AvatarFallback>{item.text.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    item.icon && <item.icon className="h-4 w-4 mr-2" />
-                  )}
-                  <span>{item.text}</span>
-                </Button>
-              ))}
-            </div>
+            {isSearching ? (
+              <div className="flex justify-center py-4">
+                <p className="text-sm text-muted-foreground">Searching...</p>
+              </div>
+            ) : searchQuery.trim() !== "" ? (
+              <>
+                {searchResults && searchResults.length > 0 ? (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3">Search Results</h3>
+                    {searchResults.map((user) => (
+                      <Link 
+                        href={`/profile/${user.id}`} 
+                        key={user.id}
+                        className="flex items-center gap-2 p-2 hover:bg-muted rounded-md transition-colors"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar_url || undefined} alt={user.full_name || ""} />
+                          <AvatarFallback>{user.full_name?.substring(0, 2).toUpperCase() || "??"}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{user.full_name}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex justify-center py-4">
+                    <p className="text-sm text-muted-foreground">No users found</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Searches</h3>
+                <div className="space-y-2">
+                  {searchSuggestions.map((item) => (
+                    <Button 
+                      key={item.text} 
+                      variant="ghost" 
+                      className="w-full justify-start h-auto py-2 px-3"
+                    >
+                      {item.type === "user" ? (
+                        <Avatar className="h-6 w-6 mr-2">
+                          <AvatarImage src={item.image} alt={item.text} />
+                          <AvatarFallback>{item.text.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        item.icon && <item.icon className="h-4 w-4 mr-2" />
+                      )}
+                      <span>{item.text}</span>
+                    </Button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -196,5 +277,3 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     </div>
   )
 }
-
-

@@ -30,13 +30,16 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, profile, signOut } = useAuth()
+  const router = useRouter();
 
   async function handleSignOut() {
     await signOut()
+    router.push('/login')
   }
 
   return (

@@ -29,11 +29,12 @@ export type Post = {
 
 export type Notification = {
   id: string;
-  type: 'like' | 'follow' | 'new_post';
+  type: 'like' | 'follow' | 'new_post' | 'accept' | 'suggestion';
   user_id: string;
-  post_id?: string;
-  read: boolean;
+  sender_id: string;
+  is_read: boolean;
   created_at: string;
+  user: Profile;
 };
 
 export type Database = {
@@ -69,8 +70,6 @@ export type Database = {
   };
 };
 
-
-
 // Utility functions for profile management
 export async function getUserProfile(userId: string): Promise<Profile | null> {
   try {
@@ -88,12 +87,14 @@ export async function getUserProfile(userId: string): Promise<Profile | null> {
     const { data: posts, error: postsError } = await supabase
     .from('posts')
     .select('*')
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
     if (postsError) {
       throw postsError;
     }
     // Convert JSONB arrays to proper TypeScript arrays
+
     const profile = {
       ...data,
       friends: Array.isArray(data.friends) ? data.friends : [],
@@ -123,6 +124,90 @@ export async function followUser(currentUserId: string, targetUserId: string): P
     return true;
   } catch (error) {
     console.error('Error following user:', error);
+    return false;
+  }
+}
+export async function sendRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
+  try {
+    // Use the RPC function to follow a user
+    const {  error } = await supabase.from('notifications').insert({
+      user_id: targetUserId,
+      sender_id: currentUserId,
+      type: 'follow',
+    })
+    
+    if (error) {
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error following user:', error);
+    return false;
+  }
+}
+export async function acceptRequest(currentUserId: string, targetUserId: string): Promise<boolean> {
+  try {
+    // Use the RPC function to follow a user
+    const { error } = await supabase.from('notifications').insert({
+      user_id: targetUserId,
+      sender_id: currentUserId,
+      type: 'accept',
+    });
+    
+    if (error) {
+      throw error;
+    }
+
+    // Get the target user's current friends list
+    const { data: targetUser, error: targetError } = await supabase
+      .from('profiles')
+      .select('friends')
+      .eq('id', targetUserId)
+      .single();
+      
+    if (targetError) {
+      throw targetError;
+    }
+
+    // Get the current user's friends list
+    const { data: currentUser, error: currentError } = await supabase
+      .from('profiles')
+      .select('friends')
+      .eq('id', currentUserId)
+      .single();
+      
+    if (currentError) {
+      throw currentError;
+    }
+
+    // Update the target user's friends list
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        friends: [...(targetUser.friends || []), currentUserId]
+      })
+      .eq('id', targetUserId);
+      
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Update the current user's friends list
+    const { error: updateError2 } = await supabase
+      .from('profiles')
+      .update({
+        friends: [...(currentUser.friends || []), targetUserId]
+      })
+      .eq('id', currentUserId);
+      
+    if (updateError2) {
+      throw updateError2;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error accepting follow request:', error);
     return false;
   }
 }
@@ -173,16 +258,17 @@ export async function createPost(userId: string, imageUrl: string, description: 
 export async function getAllPosts(userFriends: string[] = []): Promise<Post[]> {
   try {
     // If no friends provided, return empty array
-    // if (userFriends.length === 0) {
-    //   return [];
-    // }
-
+    if (userFriends.length === 0) {
+      return [];
+    }
     
     const { data, error } = await supabase
       .from('posts')
       .select('*') // Select all fields from posts
-      // .in('user_id', userFriends)
+      .in('user_id', userFriends)
       .order('created_at', { ascending: false });
+
+      console.log(data)
       
     if (error) {
       throw error;

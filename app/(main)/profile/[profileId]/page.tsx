@@ -11,18 +11,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GridIcon, HeartIcon } from 'lucide-react';
+import { GridIcon, HeartIcon, UserPlusIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import type { Post } from '@/hooks/use-post';
 import { useParams } from 'next/navigation';
-
+import { useAuth } from '@/hooks/use-auth';
+import { sendRequest,acceptRequest } from '@/hooks/use-post';
 
 export default function ProfilePage() {
   const params = useParams(); 
-  const profileId = params.profileId;
+  const profileId = params.profileId as string;
   const supabase = createClient();
+  const { user, profile } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     bio: '',
@@ -35,11 +37,15 @@ export default function ProfilePage() {
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [currentPostIndex, setCurrentPostIndex] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
+  const [isIncomingRequest, setIsIncomingRequest] = useState(false);
 
   // Set initial form data when profile loads
   useEffect(() => {
     const getUserProfile = async () => {
       if (!profileId) return;
+      if(!profile?.id) return;
       setIsLoading(true);
       const { data, error } = await supabase
         .from('profiles')
@@ -68,14 +74,91 @@ export default function ProfilePage() {
           friends: data.friends || [],
           posts: posts || [],
         });
+        
+        // Check if current user is following this profile
+        if (profile && data.friends) {
+          setIsFollowing(data.friends.includes(profile.id));
+        }
+        
+        // Check if current user has sent a follow request
+        const { data: notifications, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', profileId)
+          .eq('sender_id', profile?.id)
+          .eq('type', 'follow');
+        
+        if (notificationsError) {
+          toast.error(notificationsError.message);
+          return;
+        }
+        
+        if (notifications && notifications.length > 0) {
+          setIsRequested(true);
+        }
+
+        console.log('Notifications:', notifications, profileId, profile?.id);
+
+        // Check if current user has received a follow request
+        const { data: incomingNotifications, error: incomingNotificationsError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', profile?.id)
+          .eq('sender_id', profileId)
+          .eq('type', 'follow');
+        
+        if (incomingNotificationsError) {
+          toast.error(incomingNotificationsError.message);
+          return;
+        }
+        
+        if (incomingNotifications && incomingNotifications.length > 0) {
+          setIsIncomingRequest(true);
+        }
       }
       setIsLoading(false);
     };
     getUserProfile();
-  }, [profileId, supabase]);
+  }, [profileId, supabase, profile]);
 
+  // Handle follow user action
+  const handleFollowUser = async () => {
+    if (!user || !profile) {
+      toast.error('You must be logged in to follow users');
+      return;
+    }
+    
+    if (profileId === profile.id) {
+      toast.error('You cannot follow yourself');
+      return;
+    }
 
-
+    if(isIncomingRequest){
+      const success = await acceptRequest(profile.id, profileId);
+      if (success) {
+        setIsRequested(false);
+        setIsFollowing(true);
+        toast.success(`You are now following ${formData.fullName}`);
+      } else {
+        throw new Error('Failed to accept follow request');
+      }
+      return;
+    }
+    
+    try {
+      // Follow the user
+      const success = await sendRequest(profile.id, profileId);
+      if (success) {
+        setIsRequested(true);
+        toast.success(`Follow Request sent to ${formData.fullName}`);
+      } else {
+        throw new Error('Failed to follow user');
+      }
+    } catch (error) {
+      console.error('Error following user:', error);
+      toast.error('Failed to follow user. Please try again.');
+    } 
+  };
 
   if (isLoading) {
     return (
@@ -142,7 +225,7 @@ export default function ProfilePage() {
           {/* Profile picture */}
           <div className="flex justify-center w-full md:w-auto">
             {formData.avatarUrl && <Avatar className="h-24 w-24 md:h-36 md:w-36">
-              <AvatarImage src={formData.avatarUrl} alt="Profile" />
+              <AvatarImage src={formData.avatarUrl} alt="Profile" loading="lazy" />
               <AvatarFallback>{formData.fullName?.charAt(0) || 'U'}</AvatarFallback>
             </Avatar>}
           </div>
@@ -152,6 +235,18 @@ export default function ProfilePage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
               <h1 className="text-xl font-semibold">{formData.fullName || 'college user'}</h1>
               
+              {/* Follow button - only show if not current user's profile and not already following */}
+              {user && profile && profileId !== profile.id && (
+                <Button 
+                  onClick={handleFollowUser}
+                  disabled={isRequested || isFollowing }
+                  variant={isFollowing ? "outline" : "default"}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlusIcon className="h-4 w-4" />
+                  {isFollowing ? 'Following' : isRequested ? 'Requested' : isIncomingRequest ? 'Accept' : 'Follow'}
+                </Button>
+              )}
             </div>
 
             {/* Stats row */}
@@ -259,6 +354,7 @@ export default function ProfilePage() {
                     src={selectedPost.image_url}
                     alt="Post"
                     fill
+                    priority
                     className="object-cover"
                   />
                 )}

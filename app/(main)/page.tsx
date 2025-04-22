@@ -145,7 +145,7 @@ export default function Page() {
   const [posts, setPosts] = useState<Post[]>([]);
 
   useEffect(() => {
-    
+    console.log("profile", profile)
     const getPosts = async () => {
       if (profile?.friends) {
         setIsLoadingPosts(true);

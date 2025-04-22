@@ -27,7 +27,10 @@ import { Button } from "./ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Input } from "./ui/input"
 import { useAuth } from "@/hooks/use-auth"
-import type { Profile } from "@/hooks/use-post"
+import type { Notification, Profile } from "@/hooks/use-post"
+import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 // Dummy data for search and notifications
 const searchSuggestions = [
@@ -38,47 +41,17 @@ const searchSuggestions = [
   { type: "user", text: "Mike Peterson", image: "/avatars/mike.jpg" },
 ]
 
-const notifications = [
-  { 
-    id: 1, 
-    user: "Alex Kim", 
-    action: "liked your post", 
-    time: "2m ago", 
-    read: false,
-    avatar: "/avatars/alex.jpg"
-  },
-  { 
-    id: 2, 
-    user: "Jamie Smith", 
-    action: "started following you", 
-    time: "1h ago", 
-    read: false,
-    avatar: "/avatars/jamie.jpg"
-  },
-  { 
-    id: 3, 
-    user: "Taylor Jones", 
-    action: "commented on your photo", 
-    time: "3h ago", 
-    read: true,
-    avatar: "/avatars/taylor.jpg"
-  },
-  { 
-    id: 4, 
-    user: "Jordan Lee", 
-    action: "mentioned you in a comment", 
-    time: "5h ago", 
-    read: true,
-    avatar: "/avatars/jordan.jpg"
-  },
-]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Partial<Profile>[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  const { searchUsers } = useAuth();
+  const { searchUsers,profile } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const supabase = createClient();
+  const router = useRouter();
+
   
   // Move useRef hooks to the top level of the component
   const debounceTimeout = useRef<number | null>(null);
@@ -93,6 +66,50 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   };
 
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if(!profile?.id) return;
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', profile?.id)
+        .order('created_at', { ascending: false });
+      
+      if (notificationsError) {
+        toast.error(notificationsError.message);
+        return;
+      }
+
+      if (!notificationsData) return;
+
+      const notifications: Notification[] = [];
+
+      for(const notification of notificationsData) {
+        const { data: user, error: userError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', notification.sender_id)
+          .single();
+        
+        if (userError) {
+          toast.error(userError.message);
+          return;
+        }
+        
+        notifications.push({
+          ...notification,
+          user: user
+        });
+      }
+      
+      setNotifications(notifications);
+    };
+    
+    if (profile?.id) {
+      fetchNotifications();
+    }
+  }, [profile?.id,supabase]);
+  
   // Handle search input changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -139,7 +156,58 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     };
   }, [searchQuery, searchUsers]);
-  
+
+  const handleNotificationClick = (notification: Notification) => {
+    if(!notification.is_read){
+      try {
+        supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notification.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Error marking notification as read:', error);
+            }
+          });
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    }
+    
+    router.push(`/profile/${notification.sender_id}`);
+  };
+
+  const handleSuggestionAction = async (e: React.MouseEvent, notification: Notification) => {
+    e.stopPropagation(); // Prevent triggering the parent notification click
+    
+    // Just dismiss the suggestion
+    await deleteNotification(e, notification.id);
+  };
+
+  const deleteNotification = async (e: React.MouseEvent, notificationId: string) => {
+    e.stopPropagation(); // Prevent triggering the parent button click
+    
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+      
+      if (error) {
+        console.error('Error deleting notification:', error);
+        toast.error('Failed to delete notification');
+        return;
+      }
+      
+      // Update local state by removing the deleted notification
+      setNotifications(notifications.filter(n => n.id !== notificationId));
+      toast.success('Notification deleted');
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      toast.error('Failed to delete notification');
+    }
+  };
+
   return (
     <div className="flex">
       <Sidebar collapsible="offcanvas" {...props}>
@@ -265,24 +333,61 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {notifications.map((notification) => (
               <div 
                 key={notification.id} 
-                className={`p-4 hover:bg-accent/50 transition-colors ${!notification.read ? 'bg-accent/20' : ''}`}
+                className={`flex p-4 hover:bg-accent/50 transition-colors ${!notification.is_read ? 'bg-accent/20' : ''} ${notification.type === 'suggestion' ? 'border-l-4 border-primary' : ''}`}
               >
-                <div className="flex gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={notification.avatar} alt={notification.user} />
-                    <AvatarFallback>{notification.user.substring(0, 2)}</AvatarFallback>
+                <button 
+                  type="button"
+                  className="flex gap-3 flex-1 cursor-pointer text-left bg-transparent border-0 p-0"
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <Avatar className="h-10 w-10 flex-shrink-0">
+                    <AvatarImage src={notification.user.avatar_url || ""} alt={notification.user.full_name || ""} />
+                    <AvatarFallback>{notification.user.full_name?.substring(0, 2).toUpperCase() || "??"}</AvatarFallback>
                   </Avatar>
+                  
                   <div className="flex-1">
-                    <p className="text-sm">
-                      <span className="font-semibold">{notification.user}</span>{' '}
-                      {notification.action}
+                    <p className="text-sm flex flex-col">
+                      <span className="font-semibold">{notification.user.full_name}</span>{' '}
+                      {notification.type === 'like' && 'liked your post'}
+                      {notification.type === 'follow' && 'request to follow you'}
+                      {notification.type === 'new_post' && 'shared a new post'}
+                      {notification.type === 'accept' && 'accepted your follow request'}
+                      {notification.type === 'suggestion' && (
+                        <span className="text-primary-foreground bg-primary px-1.5 py-0.5 rounded-sm text-xs ml-1 w-fit">
+                          Suggested Friend
+                        </span>
+                      )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(() => {
+                        const now = new Date().getTime()
+                        const then = new Date(notification.created_at).getTime()
+                        const diff = (now - then) / 1000
+                        if (diff < 60) return ` ${Math.floor(diff)}s ago`
+                        if (diff < 60 * 60) return ` ${Math.floor(diff / 60)}m ago`
+                        if (diff < 60 * 60 * 24) return ` ${Math.floor(diff / (60 * 60))}h ago`
+                        return ` ${Math.floor(diff / (60 * 60 * 24))}d ago`
+                      })()}
+                    </p>
                   </div>
-                  {!notification.read && (
-                    <div className="h-2 w-2 rounded-full bg-primary self-start mt-2" />
-                  )}
-                </div>
+                </button>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 ml-2" 
+                  onClick={(e) => notification.type === 'suggestion' 
+                    ? handleSuggestionAction(e, notification)
+                    : deleteNotification(e, notification.id)
+                  }
+                  title="Dismiss"
+                >
+                  <XIcon className="h-4 w-4" />
+                </Button>
+                
+                {!notification.is_read && notification.type !== 'suggestion' && (
+                  <div className="h-2 w-2 rounded-full bg-primary absolute top-4 right-4" />
+                )}
               </div>
             ))}
           </div>

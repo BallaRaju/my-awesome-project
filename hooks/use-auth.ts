@@ -130,7 +130,7 @@ export function useAuth() {
         throw error;
       }
 
-      return window.location.reload();
+      return window.location.replace('/login');
       
       // State will be updated by the onAuthStateChange listener
     } catch (error: unknown) {
